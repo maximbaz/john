@@ -6,7 +6,8 @@ use std::io::net::ip::{Ipv4Addr, Port};
 use std::str;
 
 use self::router::{Router, Params};
-use self::iron::{Iron, Request, Response, IronResult};
+use self::iron::{Iron, Request, Response, IronResult, Set};
+use self::iron::response::modifiers::{Status, Body};
 use self::iron::status;
 
 use serialize::json;
@@ -39,37 +40,34 @@ impl Server {
     }
 
     fn hello(req: &mut Request) -> IronResult < Response > {
-        let params = req.extensions.find::< Router, Params >().unwrap();
+        let params = req.extensions.get::< Router, Params >().unwrap();
         let name = params.find("name").unwrap();
 
-        Ok(Response::with(status::Ok, format!("Hello, {}!", name)))
+        Ok(Response::new().set(Status(status::Ok)).set(Body(format!("Hello, {}!", name))))
     }
 
     fn peek(req: &mut Request) -> IronResult < Response > {
-        let params = req.extensions.find::< Router, Params >().unwrap();
+        let params = req.extensions.get::< Router, Params >().unwrap();
         let river = params.find("river").unwrap();
         let offset = from_str::< uint >(params.find("offset").unwrap_or(""));
 
         match PeekCommand::new().execute(river, offset) {
-            Some(result) => Ok(Response::with(
-                    status::Ok,
-                    json::encode(&result)
-                    )),
-            _ => Ok(Response::with(status::NotFound, ""))
+            Some(result) => Ok(Response::new().set(Status(status::Ok)).set(Body(json::encode(&result)))),
+            _ => Ok(Response::new().set(Status(status::NotFound)).set(Body("")))
         }
     }
 
     fn push(req: &mut Request) -> IronResult < Response > {
-        let params = req.extensions.find::< Router, Params >().unwrap();
+        let params = req.extensions.get::< Router, Params >().unwrap();
         let river = params.find("river").unwrap();
         let message = str::from_utf8(req.body.as_slice());
 
         match message {
             Some(message) => {
                 PushCommand::new().execute(river, message);
-                Ok(Response::with(status::Created, ""))
+                Ok(Response::new().set(Status(status::Created)).set(Body("")))
             },
-            None => Ok(Response::with(status::BadRequest, "unable to parse response body as utf8"))
+            None => Ok(Response::new().set(Status(status::BadRequest)).set(Body("unable to parse response body as utf8")))
         }
 
     }
