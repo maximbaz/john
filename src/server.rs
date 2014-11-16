@@ -53,7 +53,7 @@ impl Server {
 
         match PeekCommand::new().execute(river, offset) {
             Some(result) => Ok(Response::new().set(Status(status::Ok)).set(Body(json::encode(&result)))),
-            _ => Ok(Response::new().set(Status(status::NotFound)).set(Body("")))
+            _ => Ok(Response::new().set(Status(status::NotFound)).set(Body("NotFound")))
         }
     }
 
@@ -65,7 +65,7 @@ impl Server {
         match message {
             Some(message) => {
                 PushCommand::new().execute(river, message);
-                Ok(Response::new().set(Status(status::Created)).set(Body("")))
+                Ok(Response::new().set(Status(status::Created)).set(Body("OK")))
             },
             None => Ok(Response::new().set(Status(status::BadRequest)).set(Body("unable to parse response body as utf8")))
         }
