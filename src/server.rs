@@ -12,7 +12,7 @@ use self::iron::status;
 
 use serialize::json;
 
-use commands::{PeekCommand, PushCommand};
+use commands::{PeekCommand, PushCommand, ClearCommand};
 
 /// Http Server to make pushes, peeks and clears
 pub struct Server {
@@ -35,6 +35,7 @@ impl Server {
         router.get("/peek/:river", Server::peek);
         router.get("/peek/:river/:offset", Server::peek);
         router.post("/push/:river", Server::push);
+        router.delete("/clear/:river", Server::clear);
 
         Iron::new(router).listen(Ipv4Addr(0, 0, 0, 0), self.port);
     }
@@ -69,6 +70,13 @@ impl Server {
             },
             None => Ok(Response::new().set(Status(status::BadRequest)).set(Body("unable to parse response body as utf8")))
         }
+    }
 
+    fn clear(req: &mut Request) -> IronResult < Response > {
+        let params = req.extensions.get::< Router, Params >().unwrap();
+        let river = params.find("river").unwrap();
+
+        ClearCommand::new().execute(river);
+        Ok(Response::new().set(Status(status::Ok)).set(Body("OK")))
     }
 }

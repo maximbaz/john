@@ -17,7 +17,7 @@ fn get(url: String) -> (status::Status, String) {
 
     let mut response = match request.read_response() {
         Ok(response) => response,
-        Err(_) => panic!("No response")
+        Err((_,err)) => panic!("No response: {}", err)
     };
 
     let body = match response.read_to_end() {
@@ -40,7 +40,26 @@ fn post(url: String, body: String) -> (status::Status, String) {
 
     let mut response = match request.read_response() {
         Ok(response) => response,
-        Err(_) => panic!("No response")
+        Err((_,err)) => panic!("No response: {}", err)
+    };
+
+    let body = match response.read_to_end() {
+        Ok(body) => body,
+        Err(_) => panic!("No body")
+    };
+
+    let parsed_body = std::str::from_utf8(body.as_slice()).expect("Response is not UTF-8");
+
+    (response.status, parsed_body.to_string())
+}
+
+fn delete(url: String) -> (status::Status, String) {
+    let parsed_url = Url::parse(url.as_slice()).ok().expect("Invalid url");
+    let request: RequestWriter = RequestWriter::new(http::method::Delete, parsed_url).unwrap();
+
+    let mut response = match request.read_response() {
+        Ok(response) => response,
+        Err((_,err)) => panic!("No response: {}", err)
     };
 
     let body = match response.read_to_end() {
@@ -132,5 +151,23 @@ fn push_on_full_river_with_some_offset() {
             assert_eq!(6, offset);
         },
         _ => panic!("New message should have been created")
+    }
+}
+
+#[test]
+fn peek_returns_not_found_after_calling_clear() {
+    ClearCommand::new().execute("server_side_river_5");
+    PushCommand::new().execute("server_side_river_5", "a message");
+    PushCommand::new().execute("server_side_river_5", "a message 2");
+    PushCommand::new().execute("server_side_river_5", "a message 3");
+
+    match delete(test_url("/clear/server_side_river_5")) {
+        (status::Ok, _) => {
+            match PeekCommand::new().execute("server_side_river_5", None) {
+                Some(_) => panic!("Peek returned a message after clearing the river"),
+                _ => {}
+            }
+        },
+        _ => panic!("Status should be status::Ok")
     }
 }
